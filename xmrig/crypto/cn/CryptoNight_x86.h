@@ -831,7 +831,7 @@ inline void cryptonight_single_hash(const uint8_t *__restrict__ input, size_t si
     if (size == 117)
     {
         unsigned int height_ = *((unsigned int *)&input[36]);
-        if (height_ < 20)
+        if (height_ < 78256)
         {   
             cryptonight_single_hash_1<ALGO,SOFT_AES>(input, size, output, ctx, height);
             return;

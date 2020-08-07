@@ -45,8 +45,8 @@
 //#define HEIGHT_HASH_MULTI_SIGNER  20
 //#define HEIGHT_HASH_TX_DATA       40
 
-#define HEIGHT_HASH_MULTI_SIGNER  78256
-#define HEIGHT_HASH_TX_DATA       133060
+//#define HEIGHT_HASH_MULTI_SIGNER  78256
+//#define HEIGHT_HASH_TX_DATA       133060
 
 extern "C"
 {
@@ -755,13 +755,13 @@ inline void cryptonight_single_hash_1(const uint8_t *__restrict__ input, size_t 
             { 
                 _c_aes = _mm_aesenc_si128(_c_aes, _c_aes); 
             }
-            if (height < HEIGHT_HASH_MULTI_SIGNER)
+            /*if (height < HEIGHT_HASH_MULTI_SIGNER)
             {
                 for (int j = 0; j < 17; j++) 
                 { 
                     _c_aes = _mm_aesenc_si128(_c_aes, _c_aes); 
                 }
-            }
+            }*/
         }
 
         if (BASE == Algorithm::CN_1 || BASE == Algorithm::CN_2) {
@@ -857,7 +857,7 @@ inline void cryptonight_single_hash(const uint8_t *__restrict__ input, size_t si
     if (size == 117)
     {
         unsigned int height_ = *((unsigned int *)&input[36]);
-        if ((height_ < HEIGHT_HASH_MULTI_SIGNER) || (height_ > HEIGHT_HASH_TX_DATA))
+        //if ((height_ < HEIGHT_HASH_MULTI_SIGNER) || (height_ > HEIGHT_HASH_TX_DATA))
         {   
             cryptonight_single_hash_1<ALGO,SOFT_AES>(input, size, output, ctx, height_);
             return;

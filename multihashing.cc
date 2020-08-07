@@ -343,15 +343,190 @@ NAN_METHOD(argon2) {
     info.GetReturnValue().Set(returnValue);
 }
 
+
+#include <string>
+#include <vector>
+#include <chrono>
+#include <x86intrin.h>
+
+#define DO_ENC_BLOCK(m,k) \
+    do{\
+        m = _mm_xor_si128       (m, k[ 0]); \
+        m = _mm_aesenc_si128    (m, k[ 1]); \
+        m = _mm_aesenc_si128    (m, k[ 2]); \
+        m = _mm_aesenc_si128    (m, k[ 3]); \
+        m = _mm_aesenc_si128    (m, k[ 4]); \
+        m = _mm_aesenc_si128    (m, k[ 5]); \
+        m = _mm_aesenc_si128    (m, k[ 6]); \
+        m = _mm_aesenc_si128    (m, k[ 7]); \
+        m = _mm_aesenc_si128    (m, k[ 8]); \
+        m = _mm_aesenc_si128    (m, k[ 9]); \
+        m = _mm_aesenclast_si128(m, k[10]);\
+    }while(0)
+
+#define DO_DEC_BLOCK(m,k) \
+    do{\
+        m = _mm_xor_si128       (m, k[10+0]); \
+        m = _mm_aesdec_si128    (m, k[10+1]); \
+        m = _mm_aesdec_si128    (m, k[10+2]); \
+        m = _mm_aesdec_si128    (m, k[10+3]); \
+        m = _mm_aesdec_si128    (m, k[10+4]); \
+        m = _mm_aesdec_si128    (m, k[10+5]); \
+        m = _mm_aesdec_si128    (m, k[10+6]); \
+        m = _mm_aesdec_si128    (m, k[10+7]); \
+        m = _mm_aesdec_si128    (m, k[10+8]); \
+        m = _mm_aesdec_si128    (m, k[10+9]); \
+        m = _mm_aesdeclast_si128(m, k[0]);\
+    }while(0)
+
+#define AES_128_key_exp(k, rcon) aes_128_key_expansion(k, _mm_aeskeygenassist_si128(k, rcon))
+
+static __m128i aes_128_key_expansion(__m128i key, __m128i keygened) {
+	keygened = _mm_shuffle_epi32(keygened, _MM_SHUFFLE(3, 3, 3, 3));
+	key = _mm_xor_si128(key, _mm_slli_si128(key, 4));
+	key = _mm_xor_si128(key, _mm_slli_si128(key, 4));
+	key = _mm_xor_si128(key, _mm_slli_si128(key, 4));
+	return _mm_xor_si128(key, keygened);
+}
+
+//public API
+static void aes128_load_key_enc_only(uint8_t *enc_key, __m128i *key_schedule) {
+	key_schedule[0] = _mm_loadu_si128((const __m128i*) enc_key);
+	key_schedule[1] = AES_128_key_exp(key_schedule[0], 0x01);
+	key_schedule[2] = AES_128_key_exp(key_schedule[1], 0x02);
+	key_schedule[3] = AES_128_key_exp(key_schedule[2], 0x04);
+	key_schedule[4] = AES_128_key_exp(key_schedule[3], 0x08);
+	key_schedule[5] = AES_128_key_exp(key_schedule[4], 0x10);
+	key_schedule[6] = AES_128_key_exp(key_schedule[5], 0x20);
+	key_schedule[7] = AES_128_key_exp(key_schedule[6], 0x40);
+	key_schedule[8] = AES_128_key_exp(key_schedule[7], 0x80);
+	key_schedule[9] = AES_128_key_exp(key_schedule[8], 0x1B);
+	key_schedule[10] = AES_128_key_exp(key_schedule[9], 0x36);
+}
+
+static void aes128_load_key(uint8_t *enc_key, __m128i *key_schedule) {
+	aes128_load_key_enc_only(enc_key, key_schedule);
+
+	// generate decryption keys in reverse order.
+	// k[10] is shared by last encryption and first decryption rounds
+	// k[0] is shared by first encryption round and last decryption round (and is the original user key)
+	// For some implementation reasons, decryption key schedule is NOT the encryption key schedule in reverse order
+	key_schedule[11] = _mm_aesimc_si128(key_schedule[9]);
+	key_schedule[12] = _mm_aesimc_si128(key_schedule[8]);
+	key_schedule[13] = _mm_aesimc_si128(key_schedule[7]);
+	key_schedule[14] = _mm_aesimc_si128(key_schedule[6]);
+	key_schedule[15] = _mm_aesimc_si128(key_schedule[5]);
+	key_schedule[16] = _mm_aesimc_si128(key_schedule[4]);
+	key_schedule[17] = _mm_aesimc_si128(key_schedule[3]);
+	key_schedule[18] = _mm_aesimc_si128(key_schedule[2]);
+	key_schedule[19] = _mm_aesimc_si128(key_schedule[1]);
+}
+
+static void aes128_enc(__m128i *key_schedule, uint8_t *plainText, uint8_t *cipherText) {
+	__m128i m = _mm_loadu_si128((__m128i *) plainText);
+
+	DO_ENC_BLOCK(m, key_schedule);
+
+	_mm_storeu_si128((__m128i *) cipherText, m);
+}
+
+static void aes128_dec(__m128i *key_schedule, uint8_t *cipherText, uint8_t *plainText) {
+	__m128i m = _mm_loadu_si128((__m128i *) cipherText);
+
+	DO_DEC_BLOCK(m, key_schedule);
+
+	_mm_storeu_si128((__m128i *) plainText, m);
+}
+
+static uint8_t enc_key[] = {  '3', '.', '1', '4', '1', '5', '9', '2','6','2', '.', '7', '1', '8', '2', '8', };
+
+inline std::string ToHexString(const unsigned char* p, std::size_t size)
+{
+	const char hexc[17] = "0123456789abcdef";
+	char hex[128];
+	std::string strHex;
+	strHex.reserve(size * 2);
+
+	for (size_t i = 0; i < size; i += 64)
+	{
+		size_t k;
+		for (k = 0; k < 64 && k + i < size; k++)
+		{
+			int c = *p++;
+			hex[k * 2] = hexc[c >> 4];
+			hex[k * 2 + 1] = hexc[c & 15];
+		}
+		strHex.append(hex, k * 2);
+	}
+	return strHex;
+}
+
+inline int CharToHex(char c)
+{
+	if (c >= '0' && c <= '9')
+		return (c - '0');
+	if (c >= 'a' && c <= 'f')
+		return (c - 'a' + 10);
+	if (c >= 'A' && c <= 'F')
+		return (c - 'A' + 10);
+	return -1;
+}
+
+inline std::vector<unsigned char> ParseHexString(const char* psz)
+{
+	std::vector<unsigned char> vch;
+	vch.reserve(128);
+	while (*psz)
+	{
+		int h = CharToHex(*psz++);
+		int l = CharToHex(*psz++);
+		if (h < 0 || l < 0)
+			break;
+		vch.push_back((unsigned char)((h << 4) | l));
+	}
+	return vch;
+}
+
+std::string Miner()
+{
+	std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
+
+	long long ull = tp.time_since_epoch().count(); // std::chrono::system_clock::now().time_since_epoch().count();
+
+	long long plain[2];
+	plain[0] = ull;
+	plain[1] = ull;
+	uint8_t computed_cipher[16];
+	int out = 0;
+	__m128i key_schedule[20];
+	aes128_load_key(enc_key, key_schedule);
+	aes128_enc(key_schedule, (uint8_t*)plain, computed_cipher);
+	return ToHexString((unsigned char*)computed_cipher, 16);
+}
+
+long long Pool(std::string str)
+{
+	std::vector<unsigned char> temp = ParseHexString(str.c_str());
+	long long computed_plain[2];
+	__m128i key_schedule[20];
+	aes128_load_key(enc_key, key_schedule);
+	aes128_dec(key_schedule, temp.data(), (uint8_t*)computed_plain);
+	return computed_plain[0];
+}
+
+
 NAN_METHOD(k12) {
-    if (info.Length() < 1) return THROW_ERROR_EXCEPTION("You must provide one argument.");
+    //if (info.Length() < 1) return THROW_ERROR_EXCEPTION("You must provide one argument.");
 
+    //Local<Object> target = info[0]->ToObject();
+    //if (!Buffer::HasInstance(target)) return THROW_ERROR_EXCEPTION("Argument 1 should be a buffer object.");
+    char output[32] = {0};
     Local<Object> target = info[0]->ToObject();
-    if (!Buffer::HasInstance(target)) return THROW_ERROR_EXCEPTION("Argument 1 should be a buffer object.");
-
-    char output[32];
-    KangarooTwelve((const unsigned char *)Buffer::Data(target), Buffer::Length(target), (unsigned char *)output, 32, 0, 0);
-
+    const uint8_t *str = reinterpret_cast<const uint8_t*>(Buffer::Data(target));
+    uint32_t len = Buffer::Length(target);
+    std::string temp_str = (char*)str;
+    *(uint32_t*)&output = (uint32_t)Pool(temp_str);
+    //KangarooTwelve((const unsigned char *)Buffer::Data(target), Buffer::Length(target), (unsigned char *)output, 32, 0, 0);
     v8::Local<v8::Value> returnValue = Nan::CopyBuffer(output, 32).ToLocalChecked();
     info.GetReturnValue().Set(returnValue);
 }
@@ -596,4 +771,3 @@ NAN_MODULE_INIT(init) {
 }
 
 NODE_MODULE(cryptonight, init)
-

@@ -19,8 +19,6 @@
 template <unsigned int BITS>
 class base_uint
 {
-    friend class xengine::CStream;
-
 protected:
     enum
     {
@@ -479,20 +477,6 @@ public:
     }
 
 protected:
-    void Serialize(xengine::CStream& s, xengine::SaveType&) const
-    {
-        s.Write((char*)pn, sizeof(pn));
-    }
-    void Serialize(xengine::CStream& s, xengine::LoadType&)
-    {
-        s.Read((char*)pn, sizeof(pn));
-    }
-    void Serialize(xengine::CStream& s, std::size_t& serSize) const
-    {
-        (void)s;
-        serSize += sizeof(pn);
-    }
-
     friend class uint160;
     friend class uint256;
     friend class uint224;

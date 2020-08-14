@@ -15,6 +15,7 @@
 #include "crypto/cn/CnHash.h"
 #include "crypto/randomx/randomx.h"
 #include "crypto/defyx/defyx.h"
+#include "crypto/cn/type.h"
 #include "crypto/cn/uint256.h"
 
 extern "C" {

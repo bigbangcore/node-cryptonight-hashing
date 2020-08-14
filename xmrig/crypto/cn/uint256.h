@@ -433,16 +433,6 @@ public:
         return pn[n];
     }
 
-    void ToDataStream(xengine::CODataStream& os) const
-    {
-        os.Push(pn, sizeof(pn));
-    }
-
-    void FromDataStream(xengine::CIDataStream& is)
-    {
-        is.Pop(pn, sizeof(pn));
-    }
-
     unsigned int Bits() const
     {
         for (int pos = WIDTH - 1; pos >= 0; pos--)

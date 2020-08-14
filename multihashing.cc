@@ -15,6 +15,7 @@
 #include "crypto/cn/CnHash.h"
 #include "crypto/randomx/randomx.h"
 #include "crypto/defyx/defyx.h"
+#include "crypto/cn/uint256.h"
 
 extern "C" {
 #include "crypto/defyx/KangarooTwelve.h"
@@ -531,6 +532,13 @@ NAN_METHOD(k12) {
     info.GetReturnValue().Set(returnValue);
 }
 
+NAN_METHOD(getCompact) {
+    char output[32] = {0};
+    Local<Object> target = info[0]->ToObject();
+    uint256 returnValue = uint256(target);
+    info.GetReturnValue().Set(returnValue.GetCompact());
+}
+
 /*
 
 class CCryptonightAsync : public Nan::AsyncWorker {
@@ -763,7 +771,8 @@ NAN_MODULE_INIT(init) {
     Nan::Set(target, Nan::New("randomx").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(randomx)).ToLocalChecked());
     Nan::Set(target, Nan::New("argon2").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(argon2)).ToLocalChecked());
     Nan::Set(target, Nan::New("k12").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(k12)).ToLocalChecked());
-
+    Nan::Set(target, Nan::New("getCompact").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(getCompact)).ToLocalChecked());
+    
     //Nan::Set(target, Nan::New("cryptonight_async").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(cryptonight_async)).ToLocalChecked());
     //Nan::Set(target, Nan::New("cryptonight_light_async").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(cryptonight_light_async)).ToLocalChecked());
     //Nan::Set(target, Nan::New("cryptonight_heavy_async").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(cryptonight_heavy_async)).ToLocalChecked());

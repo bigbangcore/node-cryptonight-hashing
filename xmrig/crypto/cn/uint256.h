@@ -10,7 +10,7 @@
 #include <string.h>
 #include <string>
 #include <vector>
-#include <type.h>
+#include "type.h"
 #include <assert.h>
 
 /** Base class without constructors for uint256 and uint160.

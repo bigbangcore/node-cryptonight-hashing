@@ -15,8 +15,6 @@
 #include "crypto/cn/CnHash.h"
 #include "crypto/randomx/randomx.h"
 #include "crypto/defyx/defyx.h"
-#include "crypto/cn/type.h"
-#include "crypto/cn/uint256.h"
 
 extern "C" {
 #include "crypto/defyx/KangarooTwelve.h"
@@ -533,6 +531,7 @@ NAN_METHOD(k12) {
     info.GetReturnValue().Set(returnValue);
 }
 
+/*
 NAN_METHOD(getCompact) {
     char output[32] = {0};
     Local<Object> target = info[0]->ToObject();
@@ -540,7 +539,7 @@ NAN_METHOD(getCompact) {
     info.GetReturnValue().Set(returnValue.GetCompact());
 }
 
-/*
+
 
 class CCryptonightAsync : public Nan::AsyncWorker {
 

@@ -771,7 +771,7 @@ NAN_MODULE_INIT(init) {
     Nan::Set(target, Nan::New("randomx").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(randomx)).ToLocalChecked());
     Nan::Set(target, Nan::New("argon2").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(argon2)).ToLocalChecked());
     Nan::Set(target, Nan::New("k12").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(k12)).ToLocalChecked());
-    Nan::Set(target, Nan::New("getCompact").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(getCompact)).ToLocalChecked());
+    //Nan::Set(target, Nan::New("getCompact").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(getCompact)).ToLocalChecked());
     
     //Nan::Set(target, Nan::New("cryptonight_async").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(cryptonight_async)).ToLocalChecked());
     //Nan::Set(target, Nan::New("cryptonight_light_async").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(cryptonight_light_async)).ToLocalChecked());
